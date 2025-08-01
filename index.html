@@ -1,0 +1,135 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>Retro Message Board</title>
+  <style>
+    body {
+      background: black;
+      color: #33ff33;
+      font-family: 'Courier New', monospace;
+      padding: 2rem;
+    }
+    h1 {
+      text-align: center;
+      text-shadow: 0 0 5px #00ff00;
+    }
+    #inputArea {
+      text-align: center;
+      margin-bottom: 1rem;
+    }
+    input[type="text"] {
+      width: 60%;
+      padding: 0.5rem;
+      background: #111;
+      color: #33ff33;
+      border: 1px solid #33ff33;
+    }
+    button {
+      background: #111;
+      color: #33ff33;
+      border: 1px solid #33ff33;
+      padding: 0.5rem 1rem;
+      margin-left: 0.5rem;
+      cursor: pointer;
+    }
+    button:hover {
+      background: #33ff33;
+      color: black;
+    }
+    #messages {
+      margin-top: 2rem;
+      border-top: 1px solid #33ff33;
+      padding-top: 1rem;
+    }
+    .message {
+      margin-bottom: 1rem;
+      border-bottom: 1px dashed #33ff33;
+      padding-bottom: 0.5rem;
+    }
+    .timestamp {
+      font-size: 0.8em;
+      color: #77ff77;
+    }
+    #secret {
+      display: none;
+      color: yellow;
+      font-weight: bold;
+      margin-top: 2rem;
+      text-align: center;
+    }
+  </style>
+</head>
+<body>
+  <h1>🕹️ Retro Message Board</h1>
+
+  <div id="inputArea">
+    <input id="messageInput" type="text" placeholder="Type your message..." />
+    <button onclick="postUserMessage()">Post Message</button>
+    <button onclick="deleteAllUserMessages()">Delete All Messages</button>
+  </div>
+
+  <div id="messages"></div>
+
+  <div id="secret">👀 You found the hidden truth…</div>
+
+  <script>
+    document.addEventListener('DOMContentLoaded', () => {
+      const input = document.getElementById('messageInput');
+      const messagesDiv = document.getElementById('messages');
+      const secretDiv = document.getElementById('secret');
+
+      input.addEventListener("keypress", function (e) {
+        if (e.key === "Enter") {
+          postUserMessage();
+        }
+      });
+
+      function loadMessages() {
+        const messages = JSON.parse(localStorage.getItem('messages') || '[]');
+        messagesDiv.innerHTML = '';
+        messages.forEach(msg => addMessageToDOM(msg.text, msg.time));
+      }
+
+      function postUserMessage() {
+        const text = input.value.trim();
+        if (text === '') return;
+
+        const timestamp = new Date().toLocaleString();
+        const message = { text, time: timestamp };
+
+        const messages = JSON.parse(localStorage.getItem('messages') || '[]');
+        messages.push(message);
+        localStorage.setItem('messages', JSON.stringify(messages));
+
+        addMessageToDOM(text, timestamp);
+
+        if (text === 'I know the secret') {
+          secretDiv.style.display = 'block';
+        }
+
+        input.value = '';
+      }
+
+      function addMessageToDOM(text, time) {
+        const msgEl = document.createElement('div');
+        msgEl.className = 'message';
+        msgEl.innerHTML = `<strong>${text}</strong><div class="timestamp">${time}</div>`;
+        messagesDiv.appendChild(msgEl);
+      }
+
+      function deleteAllUserMessages() {
+        localStorage.removeItem('messages');
+        messagesDiv.innerHTML = '';
+        secretDiv.style.display = 'none';
+      }
+
+      // Expose functions globally so buttons work
+      window.postUserMessage = postUserMessage;
+      window.deleteAllUserMessages = deleteAllUserMessages;
+
+      loadMessages();
+    });
+  </script>
+</body>
+</html>
