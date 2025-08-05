@@ -1,7 +1,7 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-  <meta charset="UTF-8">
+  <meta charset="UTF-8" />
   <title>Retro Message Board</title>
   <style>
     body {
@@ -41,6 +41,8 @@
       margin-top: 2rem;
       border-top: 1px solid #33ff33;
       padding-top: 1rem;
+      max-height: 300px;
+      overflow-y: auto;
     }
     .message {
       margin-bottom: 1rem;
@@ -64,7 +66,7 @@
   <h1>🕹️ Retro Message Board</h1>
 
   <div id="inputArea">
-    <input id="messageInput" type="text" placeholder="Type your message..." />
+    <input id="messageInput" type="text" placeholder="Type your message..." autocomplete="off" />
     <button onclick="postUserMessage()">Post Message</button>
     <button onclick="deleteAllUserMessages()">Delete All Messages</button>
   </div>
@@ -73,63 +75,71 @@
 
   <div id="secret">👀 You found the hidden truth…</div>
 
+  <!-- Socket.io client library -->
+  <script src="https://cdn.socket.io/4.6.1/socket.io.min.js"></script>
   <script>
-    document.addEventListener('DOMContentLoaded', () => {
-      const input = document.getElementById('messageInput');
-      const messagesDiv = document.getElementById('messages');
-      const secretDiv = document.getElementById('secret');
+    // Connect to your backend Socket.io server
+    const socket = io('http://localhost:3000'); // Change URL if deployed
 
-      input.addEventListener("keypress", function (e) {
-        if (e.key === "Enter") {
-          postUserMessage();
-        }
-      });
+    const messagesDiv = document.getElementById('messages');
+    const secretDiv = document.getElementById('secret');
+    const input = document.getElementById('messageInput');
 
-      function loadMessages() {
-        const messages = JSON.parse(localStorage.getItem('messages') || '[]');
-        messagesDiv.innerHTML = '';
-        messages.forEach(msg => addMessageToDOM(msg.text, msg.time));
-      }
+    // Add a message div to #messages
+    function addMessageToPage(msg) {
+      const msgEl = document.createElement('div');
+      msgEl.className = 'message';
+      const timeStr = new Date(msg.timestamp).toLocaleString();
+      msgEl.innerHTML = `<strong>${msg.text}</strong><div class="timestamp">${timeStr}</div>`;
+      messagesDiv.appendChild(msgEl);
+      messagesDiv.scrollTop = messagesDiv.scrollHeight; // auto scroll to bottom
+    }
 
-      function postUserMessage() {
-        const text = input.value.trim();
-        if (text === '') return;
-
-        const timestamp = new Date().toLocaleString();
-        const message = { text, time: timestamp };
-
-        const messages = JSON.parse(localStorage.getItem('messages') || '[]');
-        messages.push(message);
-        localStorage.setItem('messages', JSON.stringify(messages));
-
-        addMessageToDOM(text, timestamp);
-
-        if (text === 'I know the secret') {
-          secretDiv.style.display = 'block';
-        }
-
-        input.value = '';
-      }
-
-      function addMessageToDOM(text, time) {
-        const msgEl = document.createElement('div');
-        msgEl.className = 'message';
-        msgEl.innerHTML = `<strong>${text}</strong><div class="timestamp">${time}</div>`;
-        messagesDiv.appendChild(msgEl);
-      }
-
-      function deleteAllUserMessages() {
-        localStorage.removeItem('messages');
-        messagesDiv.innerHTML = '';
-        secretDiv.style.display = 'none';
-      }
-
-      // Expose functions globally so buttons work
-      window.postUserMessage = postUserMessage;
-      window.deleteAllUserMessages = deleteAllUserMessages;
-
-      loadMessages();
+    // Receive full chat history on connect
+    socket.on('chat history', (messages) => {
+      messagesDiv.innerHTML = ''; // clear old messages
+      messages.forEach(addMessageToPage);
     });
+
+    // Receive new messages live
+    socket.on('new message', (msg) => {
+      addMessageToPage(msg);
+      if (msg.text === 'I know the secret') {
+        secretDiv.style.display = 'block';
+      }
+    });
+
+    // Send a new message to backend
+    function sendMessage(text) {
+      if (!text) return;
+      const message = { text, timestamp: Date.now() };
+      socket.emit('new message', message);
+    }
+
+    // Post message triggered by button or Enter key
+    function postUserMessage() {
+      const text = input.value.trim();
+      if (text === '') return;
+      sendMessage(text);
+      input.value = '';
+    }
+
+    // Delete all messages in UI (backend clear not implemented here)
+    function deleteAllUserMessages() {
+      messagesDiv.innerHTML = '';
+      secretDiv.style.display = 'none';
+    }
+
+    // Support pressing Enter to send message
+    input.addEventListener('keypress', function(e) {
+      if (e.key === 'Enter') {
+        postUserMessage();
+      }
+    });
+
+    // Expose functions globally for buttons
+    window.postUserMessage = postUserMessage;
+    window.deleteAllUserMessages = deleteAllUserMessages;
   </script>
 </body>
 </html>
